@@ -18,6 +18,7 @@
 #include <sstream>
 #include <stdlib.h> // for atoi
 #include <cmath>
+
 using namespace std;
 using namespace Rmsd;
 using namespace Utilities;
@@ -38,6 +39,41 @@ DepthFirstSearchEngine::DepthFirstSearchEngine (int argc, char* argv[])
   height = g_target.get_nres();
   curr_labeling.resize(height);
   next_labeling.resize(height);
+  
+  int max_nres = 0;
+  int index_special = 0;
+   
+  if (!g_params.fix_fragments)  // No bundle used
+  {   
+    VariableFragment* var_selected;
+    
+    for ( int i = 0; i < height; i++ )
+      _within_special_frg[ i ] = false;
+    
+    for ( int i = 0; i < height; i++ ) {
+      int ca = i*4+1;
+      var_selected = &(g_logicvars->var_fragment_list[i]);
+      
+      if ( var_selected->is_special() && var_selected->get_length() > max_nres ) {
+	max_nres = var_selected->get_length();
+	index_special = i;
+      }
+      
+      if ( var_selected->is_special() )
+	for ( int ii = i; ii < i+var_selected->get_length(); ii++ )
+	  _within_special_frg[ ii ] = true;
+    }
+  }
+ 
+  // Prepare for labeling
+  first_frg_ref = index_special;
+  last_frg_ref  = index_special + max_nres;
+  
+  for ( int i = first_frg_ref; i < height; i++ )
+    g_logicvars->var_fragment_list[i].set_assembly_direction ( LEFT_TO_RIGHT );
+  
+  for ( int i = first_frg_ref - 1; i >= 0; i-- )
+    g_logicvars->var_fragment_list[i].set_assembly_direction ( RIGHT_TO_LEFT );
 }//-
 
 
@@ -60,17 +96,44 @@ VariableFragment*
 DepthFirstSearchEngine::variable_selection() {
   string dbg = "DepthFirstSearchEngine::vselect_leftmost() - ";
   VariableFragment* var_selected = NULL;
-  // HACK -- do it better use intervals!!!
-  for (uint i=0; i<height; i++) {
+  
+  /** 
+   * @note If the current fragment belongs to a special fragment and it is NOT special
+   *       skip and try with the next one (it is already ground by labeling the special fragment).
+   *       This check is important especially while labeling fragments from right to left.
+   */
+  
+  bool found = false;
+  for ( int i = first_frg_ref; i < height; i++ ) {
     int ca = i*4+1;
-    if (!g_logicvars->var_point_list[ca].is_ground()) {
+    if ( _within_special_frg[ i ] && (!g_logicvars->var_fragment_list[ i ].is_special()) ) {
+      continue;
+    }
+  
+    if ( !g_logicvars->var_point_list[ca].is_ground() ) {
       var_selected = &(g_logicvars->var_fragment_list[i]);
-      var_selected->set_assembly_direction (LEFT_TO_RIGHT);
+      found = true;
       break;
     }
   }
+  
+  if ( !found ) {
+    for ( int i = first_frg_ref - 1; i >= 0; i-- ) {
+      int ca = i*4+1;
+      if ( _within_special_frg[ i ] && (!g_logicvars->var_fragment_list[ i ].is_special()) ) {
+        continue;
+      }
+      
+      if ( !g_logicvars->var_point_list[ca].is_ground() ) {
+        var_selected = &(g_logicvars->var_fragment_list[i]);
+        break;
+      }
+    }
+  }
+
   return var_selected;
 }//-
+
 
 
 /* Check if every element of the domain for current variable
@@ -81,6 +144,7 @@ DepthFirstSearchEngine::labeling (VariableFragment *v) {
   string dbg = "DepthFirstSearchEngine::labeling() - ";
 #ifdef SEARCH_DBG
   cout << dbg << "Labeling V_ " << v->get_idx();
+  cout << endl;
 #endif
   if (v->labeling()) {
     curr_labeling[expl_level] = v->get_label();
@@ -109,30 +173,14 @@ DepthFirstSearchEngine::labeling (VariableFragment *v) {
 void 
 DepthFirstSearchEngine::goto_next_level(const VariableFragment *v){
   uint d_idx = v->get_label(); //curr_labeling[expl_level];
-  expl_level += v->domain[d_idx].nres();
-  // manage bundles
-  if (v->is_in_bundle()) {
-    uint m_idx = v->domain_info[d_idx].frag_mate_idx;
-    uint other_var_idx = v->domain_info[d_idx].frag_mate_info[m_idx].first;
-    int  other_d_idx   = v->domain_info[d_idx].frag_mate_info[m_idx].second;
-    expl_level += 
-      (g_logicvars->var_fragment_list[other_var_idx].domain[other_d_idx].nres()); 
-  }
+  expl_level += (v->domain[d_idx].nres() + v->domain[d_idx].nres_bundle());
 }//-
 
 
 void 
 DepthFirstSearchEngine::goto_prev_level(const VariableFragment *v) {
   uint d_idx = v->get_label(); //curr_labeling[expl_level];
-  expl_level -= v->domain[d_idx].nres();
-  // manage bundles
-  if (v->is_in_bundle()) {
-    uint m_idx = v->domain_info[d_idx].frag_mate_idx;
-    uint other_var_idx = v->domain_info[d_idx].frag_mate_info[m_idx].first;
-    int  other_d_idx   = v->domain_info[d_idx].frag_mate_info[m_idx].second;
-    expl_level -= 
-      (g_logicvars->var_fragment_list[other_var_idx].domain[other_d_idx].nres());
-  }
+  expl_level -= (v->domain[d_idx].nres() + v->domain[d_idx].nres_bundle());
 }
 //-
 
@@ -140,7 +188,7 @@ DepthFirstSearchEngine::goto_prev_level(const VariableFragment *v) {
 void
 DepthFirstSearchEngine::search () {
   string dbg = "DepthFirstSearchEngine::depth_first_search() - ";
-  
+
   size_t trailtop=0, continuation=0, continuation_bundle=0;
   VariableFragment *var = NULL;
   int vidx = 0;
@@ -263,7 +311,7 @@ void
 DepthFirstSearchEngine::process_solution() {
   string dbg = "DepthFirstSearchEngine::process_leaf() - ";
   g_statistics->incr_soluions_found();
-
+  
   int nres  = g_target.get_nres();
   
   int n_threads = 32;
@@ -281,16 +329,17 @@ DepthFirstSearchEngine::process_solution() {
 #ifdef STATISTICS
   g_statistics->set_timer ( t_statistics );
   // Compute RMSD
-  real curr_rmsd = Rmsd::rmsd_compare( 0, g_target.get_bblen() - 1 );
+  // real curr_rmsd = Rmsd::rmsd_compare( 0, g_target.get_bblen() - 1 );
   //g_statistics->set_best_rmsd( protein, curr_rmsd );
   g_statistics->set_best_energy( energy );
 #endif  
 
 #ifdef WRITE_OUTPUT_PDB_FILE
   /// Store every result
-  //g_output->store_results();
+  // g_output->store_best_results( -1, energy );
   /// Store just the best result
-  if ( g_statistics->energy_is_improved() ) g_output->store_best_results( -1, energy );
+  if ( g_statistics->energy_is_improved() ) 
+    g_output->store_best_results( -1, energy );
   if ( g_statistics->get_solutions_found() % 10000 == 0 ) {
     g_output->dump();
   }

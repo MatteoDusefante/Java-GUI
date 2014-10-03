@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-enum AssemblyDirection {RIGHT_TO_LEFT, LEFT_TO_RIGHT};
+enum AssemblyDirection {RIGHT_TO_LEFT=0, LEFT_TO_RIGHT=1};
 class Atom;
 class Anchor;
 class VariableFragment;
@@ -44,6 +44,7 @@ class Fragment {
   const VariableFragment* _of_variable; // link to the associated Fragment variable
 
  public:
+  int n_res_of_fragment_associated_in_bundle_constraint;
   R_MAT rot_m;
   vec3  shift_v;  
 
@@ -89,6 +90,7 @@ class Fragment {
   uint ncentroids() const {return centroid.size();}
   uint backbone_len() const {return backbone.size();}
   uint nres() const;
+  uint nres_bundle() const { return n_res_of_fragment_associated_in_bundle_constraint; }
 
   void compute_phi();
   void compute_psi();

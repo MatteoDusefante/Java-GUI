@@ -64,9 +64,12 @@ typedef struct {
   bool follow_rmsd;
   bool centroid;
   bool gibbs_as_default;
+  bool translate_str_fnl;
   bool verbose;
   real str_weights[3];
   real crd_weights[3];
+  real set_angles;
+  size_t  num_models;
   int  n_coordinators;
   int  set_size;
   int  n_gibbs_samples;

@@ -1,0 +1,8 @@
+% Database information
+FRAGMENTDB  DB/loopdb.dat
+% Proteins Information
+TARGET_PROT ../proteins/CUDA.cocos
+KNOWN_PROT  ../proteins/CUDA.cocos
+CONSTRAINTS ../sys/CUDA.in.con
+FRAG_SEC_FL ../sys/CUDA.in.pdb
+SEQ OOOHHHHHHHHOOOOOOOHHHHHHHHHOOOOOOO

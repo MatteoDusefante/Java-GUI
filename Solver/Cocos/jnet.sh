@@ -1,0 +1,1 @@
+bin_jnet/jnet -s /home/matteo/NetBeansProjects/jafatt/Solver/proteins/CUDA.fasta

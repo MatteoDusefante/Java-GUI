@@ -13,7 +13,8 @@ Fragment::Fragment()
   : id (-1), type (standard), pid (""), offset (0), 
     aa_start (0), aa_end (0), bb_start (0), bb_end (0),
     frequency (0), probability (0), psi (0), phi (0),
-    _front_anchor (NULL), _end_anchor (NULL), _of_variable (NULL) {
+    _front_anchor (NULL), _end_anchor (NULL), _of_variable (NULL),
+    n_res_of_fragment_associated_in_bundle_constraint(0) {
 }//-
 
 Fragment::Fragment
@@ -35,7 +36,8 @@ Fragment::Fragment
     _end_anchor (NULL),
     _of_variable (variable),
     aa_seq (_aa_seq),
-    backbone (_backbone) {
+  backbone (_backbone),
+  n_res_of_fragment_associated_in_bundle_constraint(0) {
   Math::set_identity(rot_m);
   Math::set_identity(shift_v); 
   transform_aux_elements();
@@ -65,12 +67,14 @@ Fragment::Fragment (const Fragment& other) {
   probability = other.get_probability();
   phi = other.phi;
   psi = other.psi;
+  n_res_of_fragment_associated_in_bundle_constraint = 
+    other.n_res_of_fragment_associated_in_bundle_constraint;
   
   aa_seq     = other.aa_seq;
   backbone   = other.backbone;
   sidechains = other.sidechains;
   centroid   = other.centroid;
-  
+
   copy_sh_vec (other);
   copy_rot_mat (other);
   _front_anchor = NULL;
@@ -96,6 +100,9 @@ Fragment::operator= (const Fragment& other) {
     probability = other.get_probability();
     phi = other.phi;
     psi = other.psi;
+    n_res_of_fragment_associated_in_bundle_constraint = 
+      other.n_res_of_fragment_associated_in_bundle_constraint;
+
     
     aa_seq     = other.aa_seq;
     backbone   = other.backbone;

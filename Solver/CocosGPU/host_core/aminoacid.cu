@@ -163,30 +163,44 @@ AminoAcid::is_singleton () {
 
 void
 AminoAcid::fill_domain ( vector< vector< real > >& angles ) {
+  /// Set domain by partitioning the interval [-180, +180]
+  if ( gh_params.set_angles > -1 ) {
+    real degs = gh_params.set_angles == 0 ? 1 : gh_params.set_angles;
+    set_angles( degs );
+    
+    if ( _domain_values.size() > MAX_DOM_SIZE )
+    _domain_values.resize( MAX_DOM_SIZE );
+    _dom_size = _domain_values.size();
+    
+    return;
+  }
+  
   assert( angles[0].size() == angles[1].size() );
   for (uint i = 0; i < angles[0].size(); i++) {
     if ( _aa_type == helix ) {
       if ( (angles[2][i] == _aa_type) && (angles[1][i] < - 19) )
-        _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
+      _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
     }
     else if ( _aa_type == sheet ) {
-      if  ( (angles[2][i] == _aa_type) /*&&
-          ( (angles[0][i] <= -95) && (angles[0][i] >= -156) ) &&
-          ( (angles[1][i] <= 160) && (angles[1][i] >= 110)) */)
-        _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
+      /*
+       ( (angles[0][i] <= -95) && (angles[0][i] >= -156) ) &&
+       ( (angles[1][i] <= 160) && (angles[1][i] >=  110) )
+       */
+      if  ( angles[2][i] == _aa_type )
+      _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
     }
     else if ( _aa_type == turn ) {
-      if ( angles[2][i] == _aa_type ) 
-        _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
+      if ( angles[2][i] == _aa_type )
+      _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
     }
     else if ( _aa_type == coil ) {
       if ( angles[2][i] == _aa_type )
-        _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
+      _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
     }
     else {
       // other
       if ( (angles[2][i] == turn) || (angles[2][i] == coil) )
-        _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
+      _domain_values.push_back ( make_pair( 180.0 + angles[0][i], 180.0 + angles[1][i] ) );
     }
   }
   /// Next Try
@@ -212,6 +226,15 @@ AminoAcid::fill_domain ( vector< vector< real > >& angles ) {
     _domain_values.resize( MAX_DOM_SIZE );
   _dom_size = _domain_values.size();
 }//fill_domain
+
+void
+AminoAcid::set_angles ( real deg ) {
+  for ( int i = -180; i <= 180; i += deg ) {
+    for ( int j = -180; j <= 180; j += deg ) {
+      _domain_values.push_back ( make_pair( i, j ) );
+    }
+  }
+}//set_angles
 
 void
 AminoAcid::fill_backbone () {

@@ -2,7 +2,7 @@
 #include "utilities.h"
 #include "globals.h"
 #include "atom.h"
-
+#include "mathematics.h"
 
 #include "variable_point.h"
 #include "logic_variables.h"
@@ -18,6 +18,7 @@
 #include <string>
 #include <sstream>
 #include <stdlib.h> // for atoi
+#include <algorithm>    // std::swap
 
 #include <iomanip>
 
@@ -163,6 +164,7 @@ Input_data::read_files (std::string filename) {
 
 typedef struct special_fragment_{
   string pid;    // original protein
+  int idx_bb;    // idx in the DB based on leftomst assignment
   int frag_no;   // how each subfragment is coded in the input file 
   // (-1 if alone -> renumbered afterwards)
   uint offset_pdb; // reference to pdb file
@@ -218,7 +220,8 @@ Input_data::load_constraint_file (vector<Fragment>& fragment_set) {
   g_target.sequence.clear();
   g_target.set_nres(0);
     
-  while (in_confile.good()) {
+  while (in_confile.good()) 
+  {
     getline(in_confile, line);
 
     if(line.length() == 0)
@@ -257,29 +260,28 @@ Input_data::load_constraint_file (vector<Fragment>& fragment_set) {
 	: get_bbidx_from_aaidx(offset_tar_e, O);
 
       f.bb_start = bbs;
-      f.bb_end = bbe;
-      
-      getline(in_confile, line);
-
-      //Constraints: 
-      if (line.compare(b_constr_str) == 0) {
-	while (line.compare(e_constr_str) != 0) {
-	  getline (in_confile, line);
-	  // Boundle
-	  if (line.compare (0, con_bundle.length(), con_bundle) == 0) {
-	    int nfrag, fid;
-	    in_confile >> nfrag;
-	    for (int i=0; i<nfrag; i++) {
-	      in_confile >> fid;
-	      f.bundle.push_back(fid);
-	    }
-	  }
-	}
-      }
+      f.bb_end = bbe;   
       frag_list.push_back (f);
     }
   }// end constraint file
-  
+
+  // Inefficient Sort Special Fragments based on their Offsets on target
+  for(int i=0; i<frag_list.size(); i++) {
+    int si = frag_list[ i ].bb_start;
+    for(int j=i+1; j<frag_list.size(); j++) {
+      int sj = frag_list[ j ].bb_start;
+      if( sj < si ) std::swap(frag_list[ i ], frag_list[ j ]);
+    }
+    // Re-order fragment numbers in order of their bb_start number
+    frag_list[ i ].idx_bb = i;
+    frag_list[ i ].link = -1;
+  }
+
+  fragment_set.resize( frag_list.size() );
+
+  vector<int> boundle_fragments;
+  int idx_of_first_frag_in_boundle = -1;
+
   // Import special fragment from pdb for every fragment imported
   line = "";
   while (in_pdbfile.good()) {
@@ -301,21 +303,21 @@ Input_data::load_constraint_file (vector<Fragment>& fragment_set) {
       
       // Retreieve correct special fragment
       for (uint m=0; m<frag_list.size(); m++) {
-	if (frag_list[m].frag_no == mod_no) {
-	  f_spec = &frag_list[m];
+	if (frag_list[ m ].frag_no == mod_no) {
+	  f_spec = &frag_list[ m ];
 	  break;
 	}
       }
       assert (f_spec != NULL);
 
       // Read atoms details
-      while (pdb_buff.compare(0, endmdl.size(), endmdl) != 0) {
+      while (pdb_buff.compare(0, endmdl.size(), endmdl) != 0) 
+      {
 	in_pdbfile >> pdb_buff;
 	if(pdb_buff.compare(atom) == 0) {
 	  in_pdbfile >> pdb_buff;	   // N of atom
 	  in_pdbfile >> type_atom;         // Type of atom
 	  in_pdbfile >> type_aa;	   // Type of AA
-	  
 	  in_pdbfile >> pdb_buff;	   // chain 
 	  in_pdbfile >> pdb_buff;	   // AA number
 	  in_pdbfile >> x >> y >> z; // coordinates
@@ -344,50 +346,79 @@ Input_data::load_constraint_file (vector<Fragment>& fragment_set) {
 
       // Set end offset on target
       f_spec->bb_end = f_spec->bb_start + backbone.size()-1;
+ 
       // Create the fragment
       Fragment frag 
 	(f_spec->frag_no, special, f_spec->pid, f_spec->offset_pdb, 
 	 f_spec->aa_start, f_spec->aa_end, f_spec->bb_start, f_spec->bb_end, 
-	 1, 1.0, aa_seq, backbone); 
+	 1, 1.0, aa_seq, backbone);
+      
 
+      // Set end offset on target
+      f_spec->bb_end = f_spec->bb_start + backbone.size()-1;
+      
       // check for boundle constraint
-      if (!f_spec->bundle.empty()) {
+      if( g_params.fix_fragments )
+      {
 	// check if this is the first fragment of the bundle
-	if (f_spec->frag_no == f_spec->bundle[0]) {
-	  frag.compute_normal_base(0);
-	  frag.change_coordinate_system();
-	  
-	  // link other fragments of the bundle with this one
-	  for (uint i=1; i<f_spec->bundle.size(); i++) {
-	    for (uint m=0; m<frag_list.size(); m++) {
-	      if (frag_list[m].frag_no == f_spec->bundle[i]) {
-		frag_list[m].link = fragment_set.size();
-		break;
-	      }
-	    }
+	if (f_spec->frag_no == frag_list[ 0 ].frag_no ) {
+
+	  if( frag.backbone[ 0 ].is_type( N ) ) {
+	    Math::set_identity(frag.rot_m);
+	    Math::set_identity(frag.shift_v);
+	  } else {
+	    frag.compute_normal_base(0);
+	    frag.change_coordinate_system();
 	  }
+
+	  // link other fragments of the bundle with this one (will be inserted
+	  // later at the end of the fragment_set 
+	  int curr_frag_idx = f_spec->idx_bb;//fragment_set.size();
+	  idx_of_first_frag_in_boundle = curr_frag_idx;
 	}
 	else {
-	  // transform according to the first fragment of the bundle 
-	  frag.copy_rot_mat (fragment_set[f_spec->link]);
-	  frag.copy_sh_vec (fragment_set[f_spec->link]);
-	  frag.change_coordinate_system();
+	  int curr_frag_idx = f_spec->idx_bb; //fragment_set.size();	  
+	  boundle_fragments.push_back( curr_frag_idx );
 	}
       }
       else {
 	// single fragments needs to be normalized as default
-	frag.compute_normal_base(0);
-	frag.change_coordinate_system();
+	if( frag.backbone[ 0 ].is_type( N ) ) {
+	  Math::set_identity(frag.rot_m);
+	  Math::set_identity(frag.shift_v);
+	} else {
+	  frag.compute_normal_base(0);
+	  frag.change_coordinate_system();
+	}
       }
-      fragment_set.push_back (frag);
+      fragment_set[ f_spec->idx_bb ] = frag;
+            
+      // fragment_set.push_back (frag);
       backbone.clear();
     } // model processing ends here
   } // pdb file processing ends here
   
+
+  if( idx_of_first_frag_in_boundle >= 0 ) {
+    int n_res_bundle = 0;
+    for( int i : boundle_fragments )
+    {
+      // transform according to the first fragment of the bundle
+      int j = idx_of_first_frag_in_boundle;
+
+      fragment_set[ i ].copy_rot_mat( fragment_set[ j ] );
+      fragment_set[ i ].copy_sh_vec( fragment_set[ j ] );
+      fragment_set[ i ].change_coordinate_system();
+
+      n_res_bundle += fragment_set[ i ].nres();
+    }
+    int j = idx_of_first_frag_in_boundle;
+    fragment_set[ j ].n_res_of_fragment_associated_in_bundle_constraint = n_res_bundle;
+  }
+  
   // Close the files
   in_confile.close();
   in_pdbfile.close();
-
 }//-
 
 

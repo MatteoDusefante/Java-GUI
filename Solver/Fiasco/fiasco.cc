@@ -30,19 +30,35 @@
 
 using namespace std;
 
+// This function is used to set a global parameter passed from the GUI
+// to set the fragment in their original position.
+void parseIntputGUI(int argc, char* argv[]) {
+  g_params.fix_fragments = false;
+  for (int i=0; i < argc; i++) {    
+    if (!strcmp ("--hard3Dconstraints", argv[ i ])) {
+      g_params.fix_fragments = true;
+      std::cout << " Hard 3D Constraint Enabled\n";
+      break;
+    }
+  }
+}
+
 
 int main (int argc, char* argv[]) {
 
   string dbg = "DBG_MAIN() - ";    
-
-  // Process inputs
+  // Parse Input Parameter (need to be done before anything else)
+  parseIntputGUI(argc, argv);
+ 
+  // Process inputs and import Special Fragment Constraints
   Input_data In (argc, argv);
+ 
   // Load Known and Target Proteins
   cout << dbg << "Read input\n";
   g_known_prot.load_protein ( In.get_known_prot_file(), In.get_known_prot_chain() );
   g_target.load_protein ( In.get_target_prot_file(), In.get_known_prot_chain() );
   cout << dbg << "Load input and target proteins\n";
-  
+
   In.alloc_energy ();
   In.init_energy ();
   
@@ -54,6 +70,7 @@ int main (int argc, char* argv[]) {
   g_statistics = new Statistics (argc, argv);
   // Load Fragment Assembly DB
   Utilities::populate_fragment_assembly_db ( g_assembly_db, 1, In.get_fragmentdb() );
+
   cout << dbg << "Populate fragments\n";
   
   // ---------------------------------------------------------------
@@ -82,16 +99,19 @@ int main (int argc, char* argv[]) {
   
   // FIX THIS PART BELOW
   // set AA start and end positions of RIGID BLOCKS
-  for ( uint i = 0; i < g_logicvars->var_fragment_list.size(); i++ )  {
-    VariableFragment *VF = &g_logicvars->var_fragment_list[ i ];
-    for ( uint ii=0; ii < VF->domain_size(); ii++ )
-      if ( VF->domain[ii].get_type() == special ) {
-        bundle_fragments.push_back ( VF );
-        uint aa_s = VF->domain[0].get_aa_s();
-        uint aa_e = VF->domain[0].get_aa_e();
+  for (VariableFragment& VF : g_logicvars->var_fragment_list ) 
+  {
+    for ( Fragment& f : VF.domain )
+    {
+      if ( f.get_type() == special ) 
+      {
+        bundle_fragments.push_back( &VF );
+        uint aa_s = f.get_aa_s();
+        uint aa_e = f.get_aa_e();
         aas_and_aae_of_rigid_blocks.push_back ( make_pair (aa_s, aa_e) );
         break;
       }
+    }
   }
   //-
   
@@ -128,7 +148,6 @@ int main (int argc, char* argv[]) {
     DistanceLEQConstraint *leq = 
       new DistanceLEQConstraint(argc, argv, parse_pos);
 
-
   parse_pos = 0;
   while (parse_pos >= 0)
     DistanceGEQConstraint *geq = 
@@ -138,8 +157,8 @@ int main (int argc, char* argv[]) {
   AlldistantConstraint *alldist = 
     new AlldistantConstraint();
 
-
-//  Centroid Constraints
+  //  Centroid Constraints
+  /*
   for (uint i=1; i < g_target.get_nres()-1; i++) {
     int bb1 = Utilities::get_bbidx_from_aaidx (i-1, CA);
     int bb2 = Utilities::get_bbidx_from_aaidx (i,   CA);
@@ -149,32 +168,30 @@ int main (int argc, char* argv[]) {
 			      &g_logicvars->var_point_list[bb2],
 			      &g_logicvars->var_point_list[bb3]);
   }
-#ifdef FALSE
-  // Ditance Constraints 
-  parse_pos = 0;
-  while (parse_pos >= 0)
-    DistanceLEQConstraint *leq = 
-      new DistanceLEQConstraint(argc, argv, parse_pos);
-#endif
+  */
   
-#ifdef FALSE
-  
-  // Boundle Constraint
-  domain_frag_info VF_mate;
-  VF_mate.frag_mate_info.push_back ( make_pair ( aas_and_aae_of_rigid_blocks[1].first, 0 ) );
-  VF_mate.explored = false;
-  VF_mate.frag_mate_idx = 0;
-  
-  bundle_fragments[ 0 ]->domain_info[0] = VF_mate;
-  Math::set_identity ( bundle_fragments[0]->domain[0].rot_m );
-  Math::set_identity ( bundle_fragments[0]->domain[0].shift_v );
-  
-  BundleConstraint *cb = new BundleConstraint
-  ( make_pair ( bundle_fragments[ 0 ], bundle_fragments[ 1 ] ), make_pair(0, 0) );
-  //-
-  
-#endif
-  
+  for ( int idx = 1; idx < argc; idx++ ) {
+    if ( string(argv[ idx ]) == "--constraint_cg" ) {
+      for (uint i=1; i < g_target.get_nres()-1; i++) {
+        int bb1 = Utilities::get_bbidx_from_aaidx (i-1, CA);
+        int bb2 = Utilities::get_bbidx_from_aaidx (i,   CA);
+        int bb3 = Utilities::get_bbidx_from_aaidx (i+1, CA);
+        CentroidConstraint *cg =
+        new CentroidConstraint (&g_logicvars->var_point_list[bb1],
+                                &g_logicvars->var_point_list[bb2],
+                                &g_logicvars->var_point_list[bb3]);
+      }
+      std::cout << " CG Constraint Enabled\n";
+      break;
+    }
+  }
+
+  if(  g_params.fix_fragments )
+  {
+    for(int i=0; i<bundle_fragments.size()-1; i++)
+      BundleConstraint *cb = new BundleConstraint(bundle_fragments);
+  }
+
   // Ellipsoid Constraint
   parse_pos = 0;
   while (parse_pos >= 0)
