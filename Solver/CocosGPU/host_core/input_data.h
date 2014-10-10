@@ -26,19 +26,12 @@ private:
   void read_file ();
   void load_angles ();
   void load_angles_aux ();
-  void parse_for_docking   ( std::istream& inputFile );
-  void parse_for_ab_initio ( std::istream& inputFile );
-  int  set_database ( std::string line );
-  void set_agents   ( std::string line );
-  void set_dock_constraints ( std::string line );
-
   /// Energy
   int  convert_aa_pos( int aa );
   void init_energy_tables ();
   void read_energy_parameters ( std::string file_name, std::vector< std::vector<real> >& );
   void read_torsional_parameters ( std::string file_name, real tors_param[20][20][20][3] );
   /// Utilities
-  void set_default_values ();
   void create_input_file ();
   void alloc_states ();
   void alloc_energy ();

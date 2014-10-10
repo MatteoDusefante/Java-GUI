@@ -47,14 +47,13 @@ namespace Utilities{
   void compute_normal_base ( point * backbone, real rot_m[3][3], real shift_v[3] );
   void change_coordinate_system ( point * backbone, real rot_m[3][3], real shift_v[3], int len=9 );
   void overlap ( point& p1, point& p2, point& p3, point * backbone, int len=9, int offset=3 );
-  void translate_structure ( real* structure, int refence, real x, real y, real z, int len );
   
   /***************************************
    *          I/O aux functions          *
    ***************************************/
-  void output_pdb_format ( std::string, const std::vector<Atom>&, real energy = 0 );
-  std::string output_pdb_format ( point* structure, int len=0, real rmsd=1000, real energy = 0 );
-  std::string output_pdb_format ( real* structure, real rmsd=1000, real energy = 0 );
+  void output_pdb_format ( std::string, const std::vector<Atom>& );
+  std::string output_pdb_format ( point* structure, int len=0, real rmsd=0 );
+  std::string output_pdb_format ( real* structure, real rmsd=0 );
   
   int  get_format_digits ( real );
   std::string get_format_spaces ( real );

@@ -695,99 +695,75 @@ Utilities::overlap ( point& p1, point& p2, point& p3,
   }
 }//overlap
 
-void
-Utilities::translate_structure ( real* structure, int reference, real x, real y, real z, int length ) {
-  x -= structure[ reference*3 + 0 ];
-  y -= structure[ reference*3 + 1 ];
-  z -= structure[ reference*3 + 2 ];
-  for (int i = 0; i < length; i++) {
-    structure[ i*3 + 0 ] += x;
-    structure[ i*3 + 1 ] += y;
-    structure[ i*3 + 2 ] += z;
-  }//i
-}//translate_structure
-
 /***************************************
  *          I/O aux functions          *
  ***************************************/
-void
-Utilities::output_pdb_format ( string outf, const vector< Atom >& vec, real energy ) {
-  FILE *fid;
-  char fx[4], fy[4], fz[4];
-  int k = -1;
-  real x,y,z;
-  /* Open an output file */
-  fid = fopen ( outf.c_str(), "a" );
-  if (fid < 0){
-    printf("Cannot open %s to write!\n", outf.c_str());
-    return;
-  }
-  int atom=1;
-  if ( energy == 0 ) energy = gh_params.minimum_energy;
-  
-  fprintf(fid, "MODEL    001\n");
-  fprintf(fid, "REMARK \t ENERGY %f\n", energy );
-  //fprintf(fid, "MODEL    001\n");
-  
-  /* Write the solution into the output file */;
-  for (uint i = 0; i < vec.size(); i++) {
-    if ( vec[i].is_type(N) ) k++;
-    strcpy (fx, " ");
-    strcpy (fy, " ");
-    strcpy (fz, " ");
+void 
+Utilities::output_pdb_format ( string outf, const vector< Atom >& vec ) {
+    FILE *fid;
+    char fx[4], fy[4], fz[4];
+    int k = 0;
+    real x,y,z;
+    /* Open an output file */
+    fid = fopen ( outf.c_str(), "a" );
+    if (fid < 0){
+        printf("Cannot open %s to write!\n", outf.c_str());
+        return;
+    }    
+    int atom=1;
+    fprintf(fid, "MODEL    001\n");
     
-    /* Get Calpha locations */
-    x = vec.at(i)[0];
-    y = vec.at(i)[1];
-    z = vec.at(i)[2];
-    
-    /* Set correct spacing */
-    /* Specify the output format */
-    if (x < 0 && x > -10)  strcpy (fx, "  ");
-    if (y < 0 && y > -10)  strcpy (fy, "  ");
-    if (z < 0 && z > -10)  strcpy (fz, "  ");
-    if (x >= 0 && x < 10)  strcpy (fx, "   ");
-    if (y >= 0 && y < 10)  strcpy (fy, "   ");
-    if (z >= 0 && z < 10)  strcpy (fz, "   ");
-    if (x > 10 && x < 100) strcpy (fx, "  ");
-    if (y > 10 && y < 100) strcpy (fy, "  ");
-    if (z > 10 && z < 100) strcpy (fz, "  ");
-    
-    fprintf(fid,"ATOM    %3d  ",atom++);
-    if (vec.at(i).type == N)
-    fprintf (fid, "N   ");
-    if (vec.at(i).type == H)
-    fprintf (fid, "H   ");
-    if (vec.at(i).type == CA)
-    fprintf (fid, "CA  ");
-    if (vec.at(i).type == CB)
-    fprintf (fid, "C   ");
-    if (vec.at(i).type == O)
-    fprintf (fid, "O   ");
-    
-    fprintf (fid, "XXX A %3d    %s%3.3f%s%3.3f%s%3.3f  1.00  1.00\n",
-             k, fx, x, fy, y, fz, z);
-  }
-  fprintf(fid,"ENDMDL\n");
-  fclose(fid);
+    /* Write the solution into the output file */;
+    for (uint i = 0; i < vec.size(); i++) {
+        if ( vec[i].is_type(N) ) k++;
+        strcpy (fx, " ");
+        strcpy (fy, " ");
+        strcpy (fz, " ");
+        
+        /* Get Calpha locations */
+        x = vec.at(i)[0];
+        y = vec.at(i)[1];
+        z = vec.at(i)[2];
+        
+        /* Set correct spacing */
+        /* Specify the output format */
+        if (x < 0 && x > -10)  strcpy (fx, "  ");
+        if (y < 0 && y > -10)  strcpy (fy, "  ");
+        if (z < 0 && z > -10)  strcpy (fz, "  ");
+        if (x >= 0 && x < 10)  strcpy (fx, "   ");
+        if (y >= 0 && y < 10)  strcpy (fy, "   ");
+        if (z >= 0 && z < 10)  strcpy (fz, "   ");
+        if (x > 10 && x < 100) strcpy (fx, "  ");
+        if (y > 10 && y < 100) strcpy (fy, "  ");
+        if (z > 10 && z < 100) strcpy (fz, "  ");
+        
+        fprintf(fid,"ATOM    %3d  ",atom++);
+        if (vec.at(i).type == N)
+            fprintf (fid, "N   ");
+        if (vec.at(i).type == H)
+            fprintf (fid, "H   ");
+        if (vec.at(i).type == CA)
+            fprintf (fid, "CA  ");
+        if (vec.at(i).type == CB)
+            fprintf (fid, "C   ");
+        if (vec.at(i).type == O)
+            fprintf (fid, "O   ");
+        
+        fprintf (fid, "XXX A %3d    %s%3.3f%s%3.3f%s%3.3f  1.00  1.00\n",
+                 k, fx, x, fy, y, fz, z);
+    }
+    fprintf(fid,"ENDMDL\n");
+  fclose(fid);   
 }//output_pdb_format
 
 string
-Utilities::output_pdb_format( point* structure, int len, real rmsd, real energy ){
+Utilities::output_pdb_format( point* structure, int len, real rmsd ){
   stringstream s;
   real x, y, z;
   int aa_idx = -1;
   int atom_s = 0, atom_e = len;
-  int atom_counter = 0;
-  if ( energy == 0 ) energy = gh_params.minimum_energy;
-  
-  //s << "REMARK \t ENERGY: " << energy << endl;
-  //if ( rmsd > 0 ) s << "REMARK \t RMSD: " << rmsd << endl;
-  s << "MODEL " << gh_params.num_models++ << endl;
-  s << "REMARK \t ENERGY: " << energy << endl;
+  if ( rmsd >= 0 ) s << "REMARK \t RMSD: " << rmsd << endl;
   for (int i = atom_s; i < atom_e; i++) {
-    atom_counter++;
-    
     x = structure[i][0];
     y = structure[i][1];
     z = structure[i][2];
@@ -820,38 +796,41 @@ Utilities::output_pdb_format( point* structure, int len, real rmsd, real energy 
     << setw(3) << get_aaidx_from_bbidx(i, atom_type(i%5))
     << "    "
     << fixed;
-    
+    //<< get_format_spaces(x) << setprecision(3) << x
+    //<< get_format_spaces(y) << setprecision(3) << y
+    //<< get_format_spaces(z) << setprecision(3) << z
+    //<< "  1.00  1.00\n";
     if (fabs(x) >= 100) {
       if (fabs(y) >= 100) {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
       else {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
     }
@@ -859,80 +838,50 @@ Utilities::output_pdb_format( point* structure, int len, real rmsd, real energy 
       if (fabs(y) >= 100) {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
       else {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
     }
   }
-  
-  atom_counter++;
-  
-  int  CG_radius;
-  real my_CG[ 3 ];
-  for ( int i = 0; i < ((len/5) - 2); i++ ) {
-    calculate_cg_atom( cv_aa_to_class ( gh_params.target_protein->get_sequence()[ i+1 ] ),
-                      structure[ i*5 + 1    ],
-                      structure[ (i+1)*5 +1 ],
-                      structure[ (i+2)*5 +1 ],
-                      my_CG, &CG_radius );
-    x = my_CG[ 0 ];
-    y = my_CG[ 1 ];
-    z = my_CG[ 2 ];
-    
-    s<<"ATOM   "
-    <<setw(4)<<atom_counter++
-    <<"  CG  "
-    <<cv_aa1_to_aa3( gh_params.target_protein->get_sequence()[ i+1 ] )
-    <<" A "<<setw(3)<<i+2<<"    "
-    <<fixed
-    <<get_format_spaces(x)<<setprecision(3)<<x
-    <<get_format_spaces(y)<<setprecision(3)<<y
-    <<get_format_spaces(z)<<setprecision(3)<<z
-    <<"  1.00  1.00\n";
-  }//i
-  
   s << "ENDMDL\n";
   return s.str();
 }//print_results
 
 string
-Utilities::output_pdb_format( real* structure, real rmsd, real energy ){
+Utilities::output_pdb_format( real* structure, real rmsd ){
   stringstream s;
   real x, y, z;
-  int len = (gh_params.n_res) * 5;
+  int len = (gh_params.n_res - 1) * 5;
   int aa_idx = -1;
   int atom_s = 0, atom_e = len;
-  if ( energy == 0 ) energy = gh_params.minimum_energy;
-  
   s << "MODEL 0\n";
-  s << "REMARK \t ENERGY: " << energy << endl;
-  //if ( rmsd > 0 ) s << "REMARK \t RMSD: " << rmsd << endl;
+  if ( rmsd >= 0 ) s << "REMARK \t RMSD: " << rmsd << endl;
   for (int i = atom_s; i < atom_e; i++) {
     x = structure[ 3*i + 0 ];
     y = structure[ 3*i + 1 ];
@@ -966,37 +915,41 @@ Utilities::output_pdb_format( real* structure, real rmsd, real energy ){
     << setw(3) << get_aaidx_from_bbidx(i, atom_type(i%5))
     << "    "
     << fixed;
+    //<< get_format_spaces(x) << setprecision(3) << x
+    //<< get_format_spaces(y) << setprecision(3) << y
+    //<< get_format_spaces(z) << setprecision(3) << z
+    //<< "  1.00  1.00\n";
     if (fabs(x) >= 100) {
       if (fabs(y) >= 100) {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
       else {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(2) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(2) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
     }
@@ -1004,33 +957,33 @@ Utilities::output_pdb_format( real* structure, real rmsd, real energy ){
       if (fabs(y) >= 100) {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(2) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(2) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
       else {
         if (fabs(z) >= 100) {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(2) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(2) << z
+	    << "  1.00  1.00\n";
         }
         else {
           s
-          << get_format_spaces(x) << setprecision(3) << x
-          << get_format_spaces(y) << setprecision(3) << y
-          << get_format_spaces(z) << setprecision(3) << z
-          << "  1.00  1.00\n";
+	    << get_format_spaces(x) << setprecision(3) << x
+	    << get_format_spaces(y) << setprecision(3) << y
+	    << get_format_spaces(z) << setprecision(3) << z
+	    << "  1.00  1.00\n";
         }
       }
     }

@@ -17,7 +17,6 @@ private:
   std::vector< Atom > _backbone;
   std::vector< std::pair < real, real > > _domain_values;
   
-  void set_angles ( real deg );
   void fill_domain ( std::vector< std::vector< real > >& domain_angles );
   void fill_backbone();
   
