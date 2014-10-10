@@ -97,8 +97,8 @@ INCLDIRS = -I$(SOLVER_PATH) -I$(SOLVER_PATH)/$(H_FOLDER)
 
 ## Compiler Flags
 CCFLAGS = $(CCOPT) $(INCLDIRS)
-NVCCFLAGS = -arch=sm_35
-#NVCCFLAGS = -arch=sm_21
+#NVCCFLAGS = -arch=sm_35
+NVCCFLAGS = -arch=sm_21
 
 
 all:	cocos
@@ -112,5 +112,4 @@ $(OBJECTS): %.o: %.cu
 
 clean:
 	rm -f obj/host_core/*.o 
-	rm -f obj/cocos.o
-	rm  $(MAIN)
+	 rm -f obj/cocos.o

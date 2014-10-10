@@ -192,17 +192,6 @@ MONTECARLO::search () {
     /// If something is changed -> update solution
     update_solution ();
     
-    /*
-    if ( ((++n_iters) % 10) == 0 || true) {
-      cout << _dbg;
-      if ( gh_params.follow_rmsd ) {
-        printf("MonteCarlo Iteration: %d with RMSD %.8f\n", n_iters, _local_minimum);
-      }
-      else {
-        printf("MonteCarlo Iteration: %d with energy %.8f\n", n_iters, _local_minimum);
-      }
-    }
-    */
     if (n_iters > 1000) {
       try_again = false;
     }
@@ -270,7 +259,7 @@ MONTECARLO::force_label () {
   for (int i = 0; i <= _n_vars; i++) {
     if (i == _n_vars) {
       /// All not labeled variables fail propagation
-      cout << "BACKTRACK NEEDED!!!" << endl;
+      //cout << "BACKTRACK NEEDED!!!" << endl;
       _changed = false;
       _height  = _n_vars;
       return;
@@ -302,8 +291,9 @@ MONTECARLO::force_label () {
   _forced_labeling = true;
   _changed = false;
   _last_idx_sel = select;
-  int label = choose_label( w );
-  /// Update the current solution with the new labeling
+  choose_label( w );
+  
+  // Update the current solution with the new labeling
   update_solution ();
 }//force_label
 
@@ -416,11 +406,6 @@ MONTECARLO::assign_with_prob ( int label, WorkerAgent* w ) {
     rnd_num = 1.0;
   }
   /// If random is > temperature accept a worst structure
-  /*
-   cout << _dbg << "rnd_num " << rnd_num << " temp " << (_temperature / 100.0) <<
-   " _local_current_minimum " << _local_current_minimum << " new " <<
-   gh_params.beam_energies[ label ] << endl;
-   */
   if ( rnd_num > (_temperature / 100.0) ) {
     _changed               = true;
     _best_agent            = _last_idx_sel;
@@ -454,11 +439,21 @@ MONTECARLO::update_solution () {
         _height++;
         _labeled_vars[ _best_agent ] = true;
         /// Todo: label the corresponding worker agent
+        assert ( _best_wa != NULL );
+        
+        if ( (_best_label < 0) || (_best_label >= _best_wa->get_dom_size()) ) {
+          _best_label = rand() % _best_wa->get_dom_size();
+        }
+        
+        assert ( _best_label >= 0 );
+        assert ( _best_label < _best_wa->get_dom_size() );
         _best_wa->label ( _best_label );
+        
 #ifdef MONTECARLO_DEBUG
         cout << _dbg << "Set ground agt " << _best_agent <<
         " height " << _height << " out of " << _n_vars << endl;
 #endif
+        
       }
       _last_wrk_sel = _best_agent;
       /// Copy current best solution
