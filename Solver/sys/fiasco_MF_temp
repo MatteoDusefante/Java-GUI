@@ -1,6 +1,6 @@
 # ---------------------------------------------------------------------
 # Objects
-# ----------------
+# ---------------------------------------------------------------------
 SOLVER_PATH=.
 MAIN=fiasco
 H_FOLDER=host_core
@@ -99,4 +99,4 @@ $(OBJECTS): %.o: %.cc
 clean:
 	rm -f obj/host_core/*.o
 	rm -f obj/fiasco.o
-	rm -f $(MAIN)
+	rm  $(MAIN)

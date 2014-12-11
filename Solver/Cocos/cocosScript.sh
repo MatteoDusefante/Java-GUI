@@ -1,1 +1,1 @@
-./cocos -i /home/matteo/Desktop/Java-GUI/Solver/proteins/1ZDD.fasta -o /home/matteo/Desktop/Java-GUI/Solver/proteins/1ZDD.cocos.pdb --auto_allign -c 10 -v
+./cocos -i /home/matteo/Desktop/Java-GUI/Solver/proteins/1zdd.fasta -o /home/matteo/Desktop/Java-GUI/Solver/proteins/1ZDD.cocos.pdb --auto_allign -c 10 -v
